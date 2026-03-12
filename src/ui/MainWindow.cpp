@@ -56,7 +56,8 @@ MainWindow::MainWindow(DupeApp* controller, QWidget* parent)
                 for (int i = m_tree->topLevelItemCount() - 1; i >= 0; --i) {
                     QTreeWidgetItem* group = m_tree->topLevelItem(i);
                     for (int j = group->childCount() - 1; j >= 0; --j) {
-                        if (paths.contains(group->child(j)->data(1, Qt::DisplayRole).toString()))
+                        // Path is stored in column 0's UserRole on leaf rows.
+                        if (paths.contains(group->child(j)->data(0, Qt::UserRole).toString()))
                             delete group->takeChild(j);
                     }
                     // Remove the group header if it now has fewer than 2 children.
@@ -64,6 +65,12 @@ MainWindow::MainWindow(DupeApp* controller, QWidget* parent)
                         delete m_tree->takeTopLevelItem(i);
                 }
             });
+
+    connect(m_tree, &QTreeWidget::itemSelectionChanged, this, [this] {
+        const QString path = selectedPath();
+        if (!path.isEmpty())
+            m_statusLabel->setText(path);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -132,16 +139,9 @@ void MainWindow::buildTree()
 {
     m_tree = new QTreeWidget(this);
     m_tree->setColumnCount(2);
-    m_tree->setHeaderLabels({tr("SHA-256 Cluster"), tr("Size (MB)"), tr("Full File Path")});
-
-    // Actually three columns — patch header after setHeaderLabels.
-    m_tree->setColumnCount(3);
-    m_tree->setHeaderLabels({tr("SHA-256 Cluster / Filename"),
-                              tr("Size (MB)"),
-                              tr("Full File Path")});
-    m_tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    m_tree->setHeaderLabels({tr("SHA-256 Cluster / Filename"), tr("Size (MB)")});
+    m_tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_tree->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    m_tree->header()->setSectionResizeMode(2, QHeaderView::Stretch);
 
     m_tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tree->setRootIsDecorated(true);
@@ -230,8 +230,8 @@ void MainWindow::onTrashRequested()
     const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
     for (QTreeWidgetItem* item : selected) {
         if (item->parent()) { // leaf = file row
-            const QString p = item->data(2, Qt::DisplayRole).toString();
-            if (!p.isEmpty() && p != tr("Multiple Locations"))
+            const QString p = item->data(0, Qt::UserRole).toString();
+            if (!p.isEmpty())
                 paths.append(p);
         }
     }
@@ -282,7 +282,7 @@ void MainWindow::onKeepOnlyThis()
     for (int i = 0; i < group->childCount(); ++i) {
         QTreeWidgetItem* sib = group->child(i);
         if (sib != keeper)
-            toTrash.append(sib->data(2, Qt::DisplayRole).toString());
+            toTrash.append(sib->data(0, Qt::UserRole).toString());
     }
     if (!toTrash.isEmpty())
         m_controller->trashItems(toTrash);
@@ -308,9 +308,8 @@ void MainWindow::renderTree(const QList<FileRecord>& records)
             totalMb += static_cast<double>(r.size) / 1'048'576.0;
 
         auto* groupItem = new QTreeWidgetItem(m_tree);
-        groupItem->setText(0, QStringLiteral("Group: %1").arg(it.key().left(12)));
+        groupItem->setText(0, QStringLiteral("Group: %1…").arg(it.key().left(12)));
         groupItem->setText(1, QStringLiteral("%1").arg(totalMb, 0, 'f', 2));
-        groupItem->setText(2, tr("Multiple Locations"));
 
         // Tag the newest file in the cluster.
         QString newestPath;
@@ -331,8 +330,9 @@ void MainWindow::renderTree(const QList<FileRecord>& records)
                 : QFileInfo(r.path).fileName();
             child->setText(0, name);
             child->setText(1, QStringLiteral("%1").arg(mb, 0, 'f', 2));
-            child->setData(2, Qt::DisplayRole, r.path);
-            child->setText(2, r.path);
+            // Store full path in UserRole — not shown as a column.
+            child->setData(0, Qt::UserRole, r.path);
+            child->setToolTip(0, r.path);
         }
     }
 }
@@ -342,5 +342,5 @@ QString MainWindow::selectedPath() const
     const QList<QTreeWidgetItem*> sel = m_tree->selectedItems();
     if (sel.isEmpty() || !sel.first()->parent())
         return {};
-    return sel.first()->data(2, Qt::DisplayRole).toString();
+    return sel.first()->data(0, Qt::UserRole).toString();
 }
