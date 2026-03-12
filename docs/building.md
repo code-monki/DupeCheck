@@ -7,27 +7,43 @@ from source on all supported platforms.
 
 ## Contents
 
-1. [Dependencies summary](#1-dependencies-summary)
-2. [macOS](#2-macos)
-3. [Linux — x86_64](#3-linux--x86_64)
-4. [Linux — aarch64](#4-linux--aarch64)
-5. [Windows](#5-windows)
-6. [CMake presets reference](#6-cmake-presets-reference)
-7. [Makefile reference](#7-makefile-reference)
-8. [Running the tests](#8-running-the-tests)
-9. [CI/CD overview](#9-cicd-overview)
+- [Building DupeCheck](#building-dupecheck)
+  - [Contents](#contents)
+  - [1. Dependencies summary](#1-dependencies-summary)
+  - [2. macOS](#2-macos)
+    - [2.1 Required Qt modules](#21-required-qt-modules)
+    - [2.2 Compiler](#22-compiler)
+    - [2.3 Build tools](#23-build-tools)
+    - [2.4 Build](#24-build)
+    - [2.5 Full Disk Access (runtime)](#25-full-disk-access-runtime)
+  - [3. Linux — x86\_64](#3-linux--x86_64)
+    - [3.1 System packages](#31-system-packages)
+    - [3.2 Qt](#32-qt)
+    - [3.3 Build](#33-build)
+  - [4. Linux — aarch64](#4-linux--aarch64)
+    - [4.1 System packages](#41-system-packages)
+    - [4.2 Qt](#42-qt)
+    - [4.3 Build](#43-build)
+  - [5. Windows](#5-windows)
+    - [5.1 Prerequisites](#51-prerequisites)
+    - [5.2 Build](#52-build)
+    - [5.3 Deployment](#53-deployment)
+  - [6. CMake presets reference](#6-cmake-presets-reference)
+  - [7. Makefile reference](#7-makefile-reference)
+  - [8. Running the tests](#8-running-the-tests)
+  - [9. CI/CD overview](#9-cicd-overview)
 
 ---
 
 ## 1. Dependencies summary
 
-| Dependency | Version | Where to get it |
-|---|---|---|
-| Qt | 6.9+ | [Qt Online Installer](https://www.qt.io/download-qt-installer) |
-| CMake | 3.25+ | <https://cmake.org/download/> or platform package manager |
-| Ninja | 1.11+ | Platform package manager |
-| C++ compiler | C++17 | AppleClang 14+ / GCC 11+ / MSVC 2022 |
-| Git | any | <https://git-scm.com> |
+| Dependency   | Version | Where to get it                                                |
+| ------------ | ------- | -------------------------------------------------------------- |
+| Qt           | 6.9+    | [Qt Online Installer](https://www.qt.io/download-qt-installer) |
+| CMake        | 3.25+   | <https://cmake.org/download/> or platform package manager      |
+| Ninja        | 1.11+   | Platform package manager                                       |
+| C++ compiler | C++17   | AppleClang 14+ / GCC 11+ / MSVC 2022                           |
+| Git          | any     | <https://git-scm.com>                                          |
 
 Qt modules used: `Core`, `Gui`, `Widgets`, `Sql`, `Concurrent`, `Test` (tests only).  
 No other third-party libraries are required — SQLite is bundled with Qt.
@@ -216,14 +232,14 @@ The `staging\` directory is self-contained and can be zipped for distribution.
 
 Presets are defined in [`CMakePresets.json`](../CMakePresets.json).
 
-| Preset | Platform | Build type | Tests |
-|---|---|---|---|
-| `macos-debug` | macOS | Debug | ON |
-| `macos-release` | macOS | Release | OFF |
-| `linux-debug` | Linux | Debug | ON |
-| `linux-release` | Linux | Release | OFF |
-| `windows-debug` | Windows | Debug | ON |
-| `windows-release` | Windows | Release | OFF |
+| Preset            | Platform | Build type | Tests |
+| ----------------- | -------- | ---------- | ----- |
+| `macos-debug`     | macOS    | Debug      | ON    |
+| `macos-release`   | macOS    | Release    | OFF   |
+| `linux-debug`     | Linux    | Debug      | ON    |
+| `linux-release`   | Linux    | Release    | OFF   |
+| `windows-debug`   | Windows  | Debug      | ON    |
+| `windows-release` | Windows  | Release    | OFF   |
 
 The macOS presets hard-code `~/Qt/6.9.3/macos`.  
 Linux and Windows presets read `$QTDIR` / `%QTDIR%` from the environment —
@@ -240,17 +256,17 @@ appropriate preset.  `cmake` must be on `PATH` or at `/opt/homebrew/bin/cmake`.
 make [target] [CONFIG=debug|release]
 ```
 
-| Target | Description |
-|---|---|
-| `all` | Configure + build (default) |
-| `configure` | CMake configure only |
-| `build` | Incremental build (auto-configures if needed) |
-| `test` | Run full test suite via CTest |
-| `run` / `app` | Build then launch the application |
-| `clean` | Delete `build/<CONFIG>/` |
-| `distclean` | Delete entire `build/` tree |
-| `info` | Print resolved paths and detected platform |
-| `help` | Print this summary |
+| Target        | Description                                   |
+| ------------- | --------------------------------------------- |
+| `all`         | Configure + build (default)                   |
+| `configure`   | CMake configure only                          |
+| `build`       | Incremental build (auto-configures if needed) |
+| `test`        | Run full test suite via CTest                 |
+| `run` / `app` | Build then launch the application             |
+| `clean`       | Delete `build/<CONFIG>/`                      |
+| `distclean`   | Delete entire `build/` tree                   |
+| `info`        | Print resolved paths and detected platform    |
+| `help`        | Print this summary                            |
 
 ---
 
@@ -271,10 +287,10 @@ ctest --test-dir build\debug --output-on-failure
 
 Test files:
 
-| File | Coverage |
-|---|---|
-| `tests/test_engine.cpp` | Full hash, smart hash, fallback, extension case-insensitivity, symlink filter, zero-byte filter, hidden-file filter |
-| `tests/test_repository.cpp` | WAL mode, upsert, idempotent upsert, record-and-delete, undo, undo on empty history, clearAll + VACUUM |
+| File                        | Coverage                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `tests/test_engine.cpp`     | Full hash, smart hash, fallback, extension case-insensitivity, symlink filter, zero-byte filter, hidden-file filter |
+| `tests/test_repository.cpp` | WAL mode, upsert, idempotent upsert, record-and-delete, undo, undo on empty history, clearAll + VACUUM              |
 
 ---
 
@@ -282,20 +298,20 @@ Test files:
 
 GitHub Actions workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
-| Event | Action |
-|---|---|
-| Push to `master` | Build + test all 5 platform/arch targets |
-| Pull request to `master` | Same |
-| Tag `v*` | Build + test + package artifacts + create GitHub Release |
+| Event                    | Action                                                   |
+| ------------------------ | -------------------------------------------------------- |
+| Push to `master`         | Build + test all 5 platform/arch targets                 |
+| Pull request to `master` | Same                                                     |
+| Tag `v*`                 | Build + test + package artifacts + create GitHub Release |
 
 Release artifacts attached per tag:
 
-| File | Platform |
-|---|---|
-| `DupeCheck-macOS-arm64.dmg` | macOS Apple Silicon |
-| `DupeCheck-macOS-x86_64.dmg` | macOS Intel |
-| `DupeCheck-Linux-x86_64.tar.gz` | Linux x86_64 |
-| `DupeCheck-Linux-aarch64.tar.gz` | Linux ARM64 |
-| `DupeCheck-Windows-x86_64.zip` | Windows 10/11 x86_64 |
+| File                             | Platform             |
+| -------------------------------- | -------------------- |
+| `DupeCheck-macOS-arm64.dmg`      | macOS Apple Silicon  |
+| `DupeCheck-macOS-x86_64.dmg`     | macOS Intel          |
+| `DupeCheck-Linux-x86_64.tar.gz`  | Linux x86_64         |
+| `DupeCheck-Linux-aarch64.tar.gz` | Linux ARM64          |
+| `DupeCheck-Windows-x86_64.zip`   | Windows 10/11 x86_64 |
 
 Tags containing a `-` (e.g. `v1.1.0-beta`) are published as **pre-releases**.

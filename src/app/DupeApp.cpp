@@ -55,7 +55,8 @@ void DupeApp::initiateScan()
     emit scanStarted();
 
     // Fire-and-forget on Qt's global thread pool.
-    QtConcurrent::run([this] { runScan(); });
+    // Store the future to silence the nodiscard warning; we don't wait on it.
+    m_scanFuture = QtConcurrent::run([this] { runScan(); });
 }
 
 void DupeApp::trashItems(const QStringList& paths)
@@ -145,21 +146,24 @@ void DupeApp::runScan()
             m_engine->scanDirectory(targetPath);
         }
 
-        m_repo->upsertRecords(batch);
-        const QList<FileRecord> dupes = m_repo->getDuplicates();
-
-        QMetaObject::invokeMethod(this, [this, dupes] {
+        // Both upsertRecords and getDuplicates must run on the repo's owning
+        // thread so the single persistent connection is never touched from
+        // two threads simultaneously.
+        QMetaObject::invokeMethod(m_repo, [this, batch = std::move(batch)] {
+            m_repo->upsertRecords(batch);
+            const QList<FileRecord> dupes = m_repo->getDuplicates();
+            m_isScanning = false;
             emit scanFinished(dupes);
-            emit statusMessage(QStringLiteral("Analysis complete. %1 duplicate records found.")
-                                   .arg(dupes.size()));
+            emit statusMessage(
+                QStringLiteral("Analysis complete. %1 duplicate records found.")
+                    .arg(dupes.size()));
         }, Qt::QueuedConnection);
 
     } catch (const std::exception& ex) {
         const QString msg = QString::fromUtf8(ex.what());
         QMetaObject::invokeMethod(this, [this, msg] {
+            m_isScanning = false;
             emit scanError(msg);
         }, Qt::QueuedConnection);
     }
-
-    m_isScanning = false;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QFuture>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -53,6 +54,7 @@ private:
     DupeEngine*      m_engine;
     DataRepository*  m_repo;
     QStringList      m_scanPaths;
+    QFuture<void>    m_scanFuture;
     bool             m_isScanning = false;
 
     // Worker — runs on QtConcurrent thread pool

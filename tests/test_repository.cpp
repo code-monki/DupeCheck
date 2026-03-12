@@ -1,6 +1,9 @@
 // test_repository.cpp — Unit tests for DataRepository (mirrors Python test_plan.md)
+#include <QDir>
+#include <QFile>
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QTemporaryDir>
 #include <QTest>
 
 #include "engine/DataRepository.h"
@@ -46,31 +49,43 @@ static FileRecord makeRecord(const QString& hash, qint64 size, const QString& pa
     return r;
 }
 
+// Returns a unique temp-file path inside dir (the QTemporaryDir owns the dir).
+static QString tmpDb(const QTemporaryDir& dir, const QString& name = QStringLiteral("test.db"))
+{
+    return dir.filePath(name);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 void TestDataRepository::test_wal_mode()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
+    // Use a real disk file — SQLite silently ignores WAL on :memory: databases.
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
-    // Open a raw connection to verify the pragma.
-    QSqlDatabase db = QSqlDatabase::addDatabase(
-        QStringLiteral("QSQLITE"), QStringLiteral("wal_test"));
-    db.setDatabaseName(QStringLiteral(":memory:"));
-    QVERIFY(db.open());
-    QSqlQuery q(db);
-    q.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
-    q.exec(QStringLiteral("PRAGMA journal_mode"));
-    QVERIFY(q.next());
-    QCOMPARE(q.value(0).toString(), QStringLiteral("wal"));
-    db.close();
-    QSqlDatabase::removeDatabase(QStringLiteral("wal_test"));
+    // Open a separate raw connection to the same file and verify the pragma.
+    const QString connName = QStringLiteral("wal_check");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connName);
+        db.setDatabaseName(tmpDb(dir));
+        QVERIFY(db.open());
+        QSqlQuery q(db);
+        q.exec(QStringLiteral("PRAGMA journal_mode"));
+        QVERIFY(q.next());
+        QCOMPARE(q.value(0).toString(), QStringLiteral("wal"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connName);
 }
 
 void TestDataRepository::test_upsert_and_duplicates()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
     const QString hash = QStringLiteral("abc123");
     repo.upsertRecords({
@@ -84,20 +99,23 @@ void TestDataRepository::test_upsert_and_duplicates()
 
 void TestDataRepository::test_upsert_idempotent()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
     const QString path = QStringLiteral("/x/file.txt");
     repo.upsertRecords({ makeRecord(QStringLiteral("hash_v1"), 100, path) });
     repo.upsertRecords({ makeRecord(QStringLiteral("hash_v2"), 200, path) });
 
     // No duplicate cluster — only one record (the replaced one).
-    const QList<FileRecord> dupes = repo.getDuplicates();
-    QCOMPARE(dupes.size(), 0);
+    QCOMPARE(repo.getDuplicates().size(), 0);
 }
 
 void TestDataRepository::test_record_and_delete()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
     const QString hash = QStringLiteral("deadbeef");
     repo.upsertRecords({
@@ -115,7 +133,9 @@ void TestDataRepository::test_record_and_delete()
 
 void TestDataRepository::test_undo_last_trash()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
     const QString hash = QStringLiteral("cafebabe");
     repo.upsertRecords({
@@ -135,31 +155,28 @@ void TestDataRepository::test_undo_last_trash()
 
 void TestDataRepository::test_undo_empty_history()
 {
-    DataRepository repo(QStringLiteral(":memory:"));
-    const QString result = repo.undoLastTrash();
-    QVERIFY(result.isEmpty()); // must return "" without error
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
+    QVERIFY(repo.undoLastTrash().isEmpty());
 }
 
 void TestDataRepository::test_clear_all_and_vacuum()
 {
-    // Use a real temp file — VACUUM on :memory: is a no-op in some SQLite builds.
-    const QString tmpPath = QDir::tempPath() + QStringLiteral("/dupecheck_test_vacuum.db");
-    QFile::remove(tmpPath); // ensure clean state
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    DataRepository repo(tmpDb(dir));
 
-    {
-        DataRepository repo(tmpPath);
-        repo.upsertRecords({
-            makeRecord(QStringLiteral("h1"), 100, QStringLiteral("/v/a.txt")),
-            makeRecord(QStringLiteral("h1"), 100, QStringLiteral("/v/b.txt")),
-        });
+    repo.upsertRecords({
+        makeRecord(QStringLiteral("h1"), 100, QStringLiteral("/v/a.txt")),
+        makeRecord(QStringLiteral("h1"), 100, QStringLiteral("/v/b.txt")),
+    });
 
-        repo.clearAll(); // must not throw
+    repo.clearAll();
 
-        QCOMPARE(repo.getDuplicates().size(), 0);
-    }
-
-    QFile::remove(tmpPath);
+    QCOMPARE(repo.getDuplicates().size(), 0);
 }
 
 QTEST_GUILESS_MAIN(TestDataRepository)
 #include "test_repository.moc"
+
