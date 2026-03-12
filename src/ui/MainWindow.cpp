@@ -3,8 +3,10 @@
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QColor>
 #include <QDesktopServices>
 #include <QFileInfo>
+#include <QFont>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -52,17 +54,23 @@ MainWindow::MainWindow(DupeApp* controller, QWidget* parent)
     connect(m_controller, &DupeApp::statusMessage, this, &MainWindow::onStatusMessage);
     connect(m_controller, &DupeApp::trashCompleted,
             this, [this](const QStringList& paths) {
-                // Remove trashed items from the tree immediately.
-                for (int i = m_tree->topLevelItemCount() - 1; i >= 0; --i) {
+                // Mark trashed items with strikethrough + gray so the user
+                // can see what was trashed and undo if needed.
+                // The tree is fully rebuilt by scanFinished after an undo.
+                for (int i = 0; i < m_tree->topLevelItemCount(); ++i) {
                     QTreeWidgetItem* group = m_tree->topLevelItem(i);
-                    for (int j = group->childCount() - 1; j >= 0; --j) {
-                        // Path is stored in column 0's UserRole on leaf rows.
-                        if (paths.contains(group->child(j)->data(0, Qt::UserRole).toString()))
-                            delete group->takeChild(j);
+                    for (int j = 0; j < group->childCount(); ++j) {
+                        QTreeWidgetItem* child = group->child(j);
+                        if (!paths.contains(child->data(0, Qt::UserRole).toString()))
+                            continue;
+                        QFont f = child->font(0);
+                        f.setStrikeOut(true);
+                        for (int col = 0; col < child->columnCount(); ++col) {
+                            child->setFont(col, f);
+                            child->setForeground(col, QColor(Qt::gray));
+                        }
+                        child->setData(0, Qt::UserRole + 1, true); // mark trashed
                     }
-                    // Remove the group header if it now has fewer than 2 children.
-                    if (group->childCount() < 2)
-                        delete m_tree->takeTopLevelItem(i);
                 }
             });
 
@@ -229,7 +237,7 @@ void MainWindow::onTrashRequested()
     QStringList paths;
     const QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
     for (QTreeWidgetItem* item : selected) {
-        if (item->parent()) { // leaf = file row
+        if (item->parent() && !item->data(0, Qt::UserRole + 1).toBool()) {
             const QString p = item->data(0, Qt::UserRole).toString();
             if (!p.isEmpty())
                 paths.append(p);
@@ -281,7 +289,7 @@ void MainWindow::onKeepOnlyThis()
     QStringList toTrash;
     for (int i = 0; i < group->childCount(); ++i) {
         QTreeWidgetItem* sib = group->child(i);
-        if (sib != keeper)
+        if (sib != keeper && !sib->data(0, Qt::UserRole + 1).toBool())
             toTrash.append(sib->data(0, Qt::UserRole).toString());
     }
     if (!toTrash.isEmpty())
