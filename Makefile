@@ -16,14 +16,31 @@
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths and platform detection
 # ---------------------------------------------------------------------------
 CMAKE      := /opt/homebrew/bin/cmake
 BUILD_ROOT := $(CURDIR)/build
 CONFIG     ?= debug
 BUILD_DIR  := $(BUILD_ROOT)/$(CONFIG)
-APP_BUNDLE := $(BUILD_DIR)/dupecheck.app
-PRESET     := macos-$(CONFIG)
+
+# Detect the host OS and derive the preset prefix + run command.
+# On Linux/Windows developers must set QTDIR before using presets.
+UNAME := $(shell uname -s 2>/dev/null || echo Windows)
+ifeq ($(UNAME),Darwin)
+  PLATFORM   := macos
+  EXECUTABLE := $(BUILD_DIR)/dupecheck.app
+  RUN_CMD    := open "$(EXECUTABLE)"
+else ifeq ($(UNAME),Linux)
+  PLATFORM   := linux
+  EXECUTABLE := $(BUILD_DIR)/dupecheck
+  RUN_CMD    := "$(EXECUTABLE)"
+else
+  PLATFORM   := windows
+  EXECUTABLE := $(BUILD_DIR)/dupecheck.exe
+  RUN_CMD    := "$(EXECUTABLE)"
+endif
+
+PRESET := $(PLATFORM)-$(CONFIG)
 
 # ---------------------------------------------------------------------------
 # Cosmetics
@@ -56,10 +73,10 @@ help:
 	@echo ""
 	@echo "  $(CYAN)TARGETS$(RESET)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "all"        "Configure + build (default target)"
-	@printf "    $(BOLD)%-18s$(RESET) %s\n" "configure"  "Run cmake --preset <CONFIG> to generate Ninja files"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "configure"  "Run cmake --preset <PLATFORM>-<CONFIG> to generate Ninja files"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "build"      "Compile all targets (requires configure)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "test"       "Run the full unit-test suite via CTest"
-	@printf "    $(BOLD)%-18s$(RESET) %s\n" "run"        "Build then open the .app bundle via macOS 'open'"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "run"        "Build then launch the app (macOS: open .app; Linux/Win: exec)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "app"        "Alias for 'run'"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "clean"      "Delete the build tree for CONFIG (keeps other configs)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "distclean"  "Delete the entire build/ directory (all configs)"
@@ -69,6 +86,12 @@ help:
 	@echo "  $(CYAN)CONFIG VALUES$(RESET)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "debug"   "CMAKE_BUILD_TYPE=Debug,   BUILD_TESTS=ON  (default)"
 	@printf "    $(BOLD)%-18s$(RESET) %s\n" "release" "CMAKE_BUILD_TYPE=Release, BUILD_TESTS=OFF"
+	@echo ""
+	@echo "  $(CYAN)PLATFORM PRESETS$(RESET) (auto-detected from uname)"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "macos-debug"    "Uses ~/Qt/6.9.3/macos (hardcoded)"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "macos-release"  "Uses ~/Qt/6.9.3/macos (hardcoded)"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "linux-*"        "Requires:  export QTDIR=~/Qt/6.9.3/gcc_64"
+	@printf "    $(BOLD)%-18s$(RESET) %s\n" "windows-*"      "Requires:  set QTDIR=C:\\Qt\\6.9.3\\msvc2022_64"
 	@echo ""
 	@echo "  $(CYAN)EXAMPLES$(RESET)"
 	@echo "    make                        # debug configure + build"
@@ -109,11 +132,11 @@ test: build
 # Run / app — build then open the macOS app bundle
 # ---------------------------------------------------------------------------
 run app: build
-	@echo "$(YELLOW)▶ Launching $(APP_BUNDLE)$(RESET)"
-	@if [ ! -d "$(APP_BUNDLE)" ]; then \
-	    echo "  ERROR: bundle not found at $(APP_BUNDLE)"; exit 1; \
+	@echo "$(YELLOW)▶ Launching $(EXECUTABLE)$(RESET)"
+	@if [ ! -e "$(EXECUTABLE)" ]; then \
+	    echo "  ERROR: executable not found at $(EXECUTABLE)"; exit 1; \
 	fi
-	open "$(APP_BUNDLE)"
+	$(RUN_CMD)
 
 # ---------------------------------------------------------------------------
 # Clean — remove only the current CONFIG's build tree
@@ -136,11 +159,12 @@ distclean:
 info:
 	@echo ""
 	@echo "  $(BOLD)Resolved configuration$(RESET)"
-	@printf "    %-20s %s\n" "CONFIG"     "$(CONFIG)"
-	@printf "    %-20s %s\n" "PRESET"     "$(PRESET)"
-	@printf "    %-20s %s\n" "BUILD_DIR"  "$(BUILD_DIR)"
-	@printf "    %-20s %s\n" "APP_BUNDLE" "$(APP_BUNDLE)"
-	@printf "    %-20s %s\n" "CMAKE"      "$(CMAKE)"
+	@printf "    %-20s %s\n" "PLATFORM"    "$(PLATFORM)"
+	@printf "    %-20s %s\n" "CONFIG"      "$(CONFIG)"
+	@printf "    %-20s %s\n" "PRESET"      "$(PRESET)"
+	@printf "    %-20s %s\n" "BUILD_DIR"   "$(BUILD_DIR)"
+	@printf "    %-20s %s\n" "EXECUTABLE"  "$(EXECUTABLE)"
+	@printf "    %-20s %s\n" "CMAKE"       "$(CMAKE)"
 	@cmake_ver=$$($(CMAKE) --version | head -1); \
 	    printf "    %-20s %s\n" "cmake version" "$$cmake_ver"
 	@echo ""

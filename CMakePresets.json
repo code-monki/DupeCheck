@@ -1,46 +1,101 @@
 {
-  "version": 3,
+  "version": 6,
   "configurePresets": [
+
     {
       "name": "macos-debug",
       "displayName": "macOS Debug",
+      "description": "AppleClang + Ninja. Requires Qt 6.9.3 installed at ~/Qt/6.9.3/macos.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.9.3/macos",
+        "CMAKE_BUILD_TYPE":   "Debug",
+        "CMAKE_PREFIX_PATH":  "$env{HOME}/Qt/6.9.3/macos",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-        "BUILD_TESTS": "ON"
+        "BUILD_TESTS":        "ON"
       }
     },
+
     {
       "name": "macos-release",
       "displayName": "macOS Release",
+      "description": "AppleClang + Ninja. Requires Qt 6.9.3 installed at ~/Qt/6.9.3/macos.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.9.3/macos",
+        "CMAKE_BUILD_TYPE":   "Release",
+        "CMAKE_PREFIX_PATH":  "$env{HOME}/Qt/6.9.3/macos",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-        "BUILD_TESTS": "OFF"
+        "BUILD_TESTS":        "OFF"
+      }
+    },
+
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "description": "GCC + Ninja. Set QTDIR to your Qt root first: export QTDIR=~/Qt/6.9.3/gcc_64",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":  "Debug",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "BUILD_TESTS":       "ON"
+      }
+    },
+
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "description": "GCC + Ninja. Set QTDIR to your Qt root first: export QTDIR=~/Qt/6.9.3/gcc_64",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":  "Release",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "BUILD_TESTS":       "OFF"
+      }
+    },
+
+    {
+      "name": "windows-debug",
+      "displayName": "Windows Debug (MSVC)",
+      "description": "Run from a VS 2022 Developer Command Prompt. Set QTDIR=C:\\Qt\\6.9.3\\msvc2022_64",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":  "Debug",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "BUILD_TESTS":       "ON"
+      }
+    },
+
+    {
+      "name": "windows-release",
+      "displayName": "Windows Release (MSVC)",
+      "description": "Run from a VS 2022 Developer Command Prompt. Set QTDIR=C:\\Qt\\6.9.3\\msvc2022_64",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":  "Release",
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "BUILD_TESTS":       "OFF"
       }
     }
+
   ],
+
   "buildPresets": [
-    {
-      "name": "macos-debug",
-      "configurePreset": "macos-debug"
-    },
-    {
-      "name": "macos-release",
-      "configurePreset": "macos-release"
-    }
+    { "name": "macos-debug",    "configurePreset": "macos-debug"    },
+    { "name": "macos-release",  "configurePreset": "macos-release"  },
+    { "name": "linux-debug",    "configurePreset": "linux-debug"    },
+    { "name": "linux-release",  "configurePreset": "linux-release"  },
+    { "name": "windows-debug",  "configurePreset": "windows-debug"  },
+    { "name": "windows-release","configurePreset": "windows-release"}
   ],
+
   "testPresets": [
-    {
-      "name": "macos-debug",
-      "configurePreset": "macos-debug",
-      "output": { "verbosity": "verbose" }
-    }
+    { "name": "macos-debug",   "configurePreset": "macos-debug",   "output": { "verbosity": "verbose" } },
+    { "name": "linux-debug",   "configurePreset": "linux-debug",   "output": { "verbosity": "verbose" } },
+    { "name": "windows-debug", "configurePreset": "windows-debug", "output": { "verbosity": "verbose" } }
   ]
 }
