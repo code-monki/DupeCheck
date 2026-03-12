@@ -18,7 +18,6 @@
 # ---------------------------------------------------------------------------
 # Paths and platform detection
 # ---------------------------------------------------------------------------
-CMAKE      := /opt/homebrew/bin/cmake
 BUILD_ROOT := $(CURDIR)/build
 CONFIG     ?= debug
 BUILD_DIR  := $(BUILD_ROOT)/$(CONFIG)
@@ -30,14 +29,17 @@ ifeq ($(UNAME),Darwin)
   PLATFORM   := macos
   EXECUTABLE := $(BUILD_DIR)/dupecheck.app
   RUN_CMD    := open "$(EXECUTABLE)"
+  CMAKE      := /opt/homebrew/bin/cmake
 else ifeq ($(UNAME),Linux)
   PLATFORM   := linux
   EXECUTABLE := $(BUILD_DIR)/dupecheck
   RUN_CMD    := "$(EXECUTABLE)"
+  CMAKE      := cmake
 else
   PLATFORM   := windows
   EXECUTABLE := $(BUILD_DIR)/dupecheck.exe
   RUN_CMD    := "$(EXECUTABLE)"
+  CMAKE      := cmake
 endif
 
 PRESET := $(PLATFORM)-$(CONFIG)
