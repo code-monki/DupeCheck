@@ -1,91 +1,99 @@
-# DupeCheck v8.1
-High-Volume Deduplication Management Console
+# DupeCheck
 
-## Overview
-DupeCheck is a high-performance utility designed for managing multi-terabyte data archives (26TB+). It balances data integrity with I/O efficiency by utilizing a Hybrid Hashing approach and a persistent SQLite repository.
+High-volume deduplication management console for multi-terabyte data archives.
 
-## Key Features
-
-- **Hybrid Hashing:** * Full Hash: SHA-256 for documents, code, and critical files.
-- **Smart Check:** Head-Tail hashing (1MB buffers) for massive media and container files (.mkv, .iso, .zip) to minimize I/O churn.
-- **Symlink Awareness:** Strictly ignores symbolic links to prevent infinite loops and protect master-file integrity during large-scale migrations.
-- **Multi-Drive Orchestration:** Define and manage multiple scan targets (local SSDs, external mechanical arrays) within a single session.
-- **SQLite Persistence:** Uses a local database with VACUUM maintenance for near-instant duplicate identification across massive file sets.
-- **Safety Net:** Utilizes send2trash for native OS hooks, ensuring "deletion" is a reversible move to the Recycle Bin/Trash.
+Built with **C++17** and **Qt 6** — native UI on macOS, Linux, and Windows with a responsive MVC architecture that keeps the GUI thread free during large-scale scans.
 
 ---
 
-## Project Structure
+## Features
 
-- src/app.py: **The Controller**. Coordinates background threading and links the Engine to the UI.
-- src/engine/dupe_engine.py: **The Model (Logic)**. Handles file discovery, symlink protection, and the Smart Check hashing.
-- src/engine/repository.py: **The Model (Data)**. Manages the SQLite schema, batch upserts, and grouping queries.
-- src/ui/main_window.py: **The View**. High-density Treeview for cluster management and context menus.
-- src/ui/config_dialog.py: **The View (Config)**. Modal for drive selection and database maintenance.
+| Feature | Detail |
+|---|---|
+| **Hybrid hashing** | Full SHA-256 for documents and code; smart head-tail hashing (first + last 1 MB) for large media containers (`.mkv`, `.iso`, `.zip`, …) to minimise I/O churn on multi-TB arrays |
+| **Symlink protection** | Symbolic links are unconditionally skipped — no infinite loops, no aliased duplicates |
+| **Hidden-file filtering** | Any path component beginning with `.` is silently excluded |
+| **Multi-drive orchestration** | Define and manage any number of scan roots (local SSDs, external arrays, NAS mounts) in a single session |
+| **SQLite persistence** | WAL-mode database with batch upserts — near-instant duplicate identification after the initial index pass |
+| **Safe deletion** | Files are moved to the system Trash (macOS: Finder AppleScript; others: `QFile::moveToTrash`) — no immediate `rm` |
+| **Undo** | Last trash action is reverted from the history ledger; re-stage the file from Trash manually if needed |
+| **Real-time filter** | Client-side substring filter on the results tree — zero DB round-trips on keystroke |
 
 ---
 
-## Setup & Installation
+## Platform support
 
-1. Environment Configuration
-Ensure you are using Python 3.12+ for the best compatibility with current standard library hashing:
+| Platform | Architecture | Packaged as |
+|---|---|---|
+| macOS | arm64 (Apple Silicon) | `.dmg` |
+| macOS | x86_64 (Intel) | `.dmg` |
+| Linux | x86_64 | `.tar.gz` |
+| Linux | aarch64 | `.tar.gz` |
+| Windows | x86_64 (MSVC 2022) | `.zip` |
 
-```python
-python3 -m venv venv
-source venv/bin/activate
+Pre-built binaries for tagged releases are attached to the [GitHub Releases](https://github.com/code-monki/DupeCheck/releases) page.
+
+---
+
+## Project structure
+
+```
+.github/workflows/ci.yml   CI/CD — matrix build + release packaging
+CMakeLists.txt             Root CMake build
+CMakePresets.json          Per-platform configure presets
+Makefile                   Developer convenience wrapper (make help)
+LICENSE                    GNU LGPLv3
+docs/                      Requirements, architecture, test plan, build guide
+src/
+  types.h                  FileRecord struct shared across all layers
+  main.cpp                 QApplication entry point
+  engine/
+    DupeEngine             File discovery, hashing (full + smart)
+    DataRepository         SQLite persistence (WAL, upsert, undo, VACUUM)
+  app/
+    DupeApp                Controller — QtConcurrent scan worker, trash, undo
+  ui/
+    MainWindow             Two-level cluster tree, toolbar, filter, copy path
+    ConfigDialog           Scan paths, smart-check extensions, DB maintenance
+    HelpWindow             Read-only reference panel
+tests/
+  test_engine.cpp          QtTest suite — hashing, discovery, filters
+  test_repository.cpp      QtTest suite — SQLite CRUD, WAL, undo, VACUUM
 ```
 
 ---
 
-## Setup & Installation
+## Quick start (macOS)
 
-#### 1. **Environment Configuration**
+```bash
+# Prerequisites: Qt 6.9+ installed via the Qt Online Installer, Ninja via Homebrew
+brew install ninja
 
-Ensure you are using Python 3.12+ for the best compatibility with current standard library hashing:
+# Configure + build (debug, tests enabled)
+make
 
-```python
-python3 -m venv venv
-source venv/bin/activate
+# Run the unit tests
+make test
+
+# Launch the app
+make run
 ```
 
-#### 2. **Install Dependencies**
-
-```python
-pip install -r requirements.txt
-```
+See [docs/building.md](docs/building.md) for full dependency lists and platform-specific instructions.
 
 ---
 
-## Usage
+## Runtime notes
 
-### Running the Application
-
-From the root directory:
-
-```python
-python3 -m src.app
-```
-
-## Maintenance
-
-- **Drive Setup:** Click the ⚙ icon (Settings) to add your external volumes or internal mount points.
-- **Smart Check:** Add extensions (e.g., iso, mkv) in Settings to enable high-speed partial hashing for those types.
-- **Cache Purge:** Use "Clear Scan Cache" in Settings to reset the index and perform a fresh 26TB scan.
+- **macOS Full Disk Access** — grant Full Disk Access to Terminal (or your IDE) in  
+  *System Settings → Privacy & Security → Full Disk Access* to allow scanning `/Volumes`.
+- **Database location** — `dupecheck.db` is created in the working directory on first launch.  
+  It is excluded from version control by `.gitignore`.
+- **Smart Check extensions** — configure in *Settings*; the default set is  
+  `.mkv .mp4 .iso .zip .tar .mov`.
 
 ---
 
-## Technical Considerations
+## License
 
-- **Buffered I/O:** The engine uses 1MB block reads to align with modern SSD and mechanical drive controller buffers, maximizing throughput.
-- **MVC Architecture:** Separation of concerns ensures that the UI remains responsive even during high-latency I/O operations on external arrays.
-- **Full Disk Access:** On macOS, grant Full Disk Access to your Terminal or IDE in System Settings > Privacy & Security to allow crawling of /Volumes.
-
----
-
-### Deployment Checklist
-
-1. **Package Integrity:** Ensure src/engine/__init__.py exists to allow package-level imports.
-2. **Database Path:** The default index is stored as dupecheck.db in the project root.
-3. **Cleanup:** Ensure the old logic folder and main.py entry point have been removed to avoid namespace collisions.
-
----
+GNU Lesser General Public License v3.0 — see [LICENSE](LICENSE).
