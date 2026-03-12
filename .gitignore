@@ -1,0 +1,49 @@
+# ── Build outputs ─────────────────────────────────────────────────────────────
+build/
+cmake-build-*/
+
+# ── Qt / CMake generated ───────────────────────────────────────────────────────
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+_deps/
+
+# ── macOS bundle / deployment ──────────────────────────────────────────────────
+*.app/
+*.dmg
+*.pkg
+
+# ── Windows installer / deployment ────────────────────────────────────────────
+*.exe
+*.msi
+*.zip
+
+# ── Compiled objects / libraries ──────────────────────────────────────────────
+*.o
+*.obj
+*.a
+*.lib
+*.dylib
+*.so
+*.dll
+
+# ── Qt Creator project files (optional — uncomment if not using Qt Creator) ───
+# *.pro.user
+# *.pro.user.*
+# *.qbs.user
+# *.qbs.user.*
+
+# ── Database files produced at runtime ────────────────────────────────────────
+dupecheck.db
+dupecheck.db-wal
+dupecheck.db-shm
+
+# ── Editor / OS junk ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
