@@ -13,6 +13,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QProgressBar>
+#include <QPushButton>
 #include <QStatusBar>
 #include <QTimer>
 #include <QToolBar>

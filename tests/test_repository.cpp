@@ -1,4 +1,6 @@
 // test_repository.cpp — Unit tests for DataRepository (mirrors Python test_plan.md)
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTest>
 
 #include "engine/DataRepository.h"
@@ -57,8 +59,8 @@ void TestDataRepository::test_wal_mode()
         QStringLiteral("QSQLITE"), QStringLiteral("wal_test"));
     db.setDatabaseName(QStringLiteral(":memory:"));
     QVERIFY(db.open());
-    db.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
     QSqlQuery q(db);
+    q.exec(QStringLiteral("PRAGMA journal_mode=WAL"));
     q.exec(QStringLiteral("PRAGMA journal_mode"));
     QVERIFY(q.next());
     QCOMPARE(q.value(0).toString(), QStringLiteral("wal"));

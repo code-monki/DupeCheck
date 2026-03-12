@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QRandomGenerator>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -50,7 +51,7 @@ static QByteArray randomBytes(int n)
 {
     QByteArray b(n, '\0');
     for (int i = 0; i < n; ++i)
-        b[i] = static_cast<char>(qrand() % 256);
+        b[i] = static_cast<char>(QRandomGenerator::global()->bounded(256));
     return b;
 }
 

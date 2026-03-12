@@ -30,7 +30,7 @@ public:
     /// Recursive directory walk. Yields FileRecord objects with hash, size,
     /// and path populated. Emits fileDiscovered() for each valid file;
     /// caller typically runs this on a worker thread.
-    void scanDirectory(const QString& rootPath) const;
+    void scanDirectory(const QString& rootPath);
 
 signals:
     /// Emitted for every processable file found during scanDirectory().

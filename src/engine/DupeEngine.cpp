@@ -41,7 +41,7 @@ QString DupeEngine::getHash(const QString& filePath) const
     return fullHash(filePath);
 }
 
-void DupeEngine::scanDirectory(const QString& rootPath) const
+void DupeEngine::scanDirectory(const QString& rootPath)
 {
     QDirIterator it(rootPath,
                     QDir::Files | QDir::NoDotAndDotDot | QDir::NoSymLinks,
